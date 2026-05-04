@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Pencil, Eye } from "lucide-react";
+import { API_ENDPOINTS } from "../config/api";
 
 export default function Attendance() {
 
@@ -22,7 +23,7 @@ export default function Attendance() {
   const fetchAttendance = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5001/api/admin/attendance",
+        API_ENDPOINTS.ADMIN_ATTENDANCE,
         { withCredentials: true }
       );
       setRecords(res.data);
@@ -45,7 +46,7 @@ export default function Attendance() {
 
     try {
       await axios.put(
-        `http://localhost:5001/api/admin/attendance/${item._id}`,
+        `${API_ENDPOINTS.ADMIN_ATTENDANCE}/${item._id}`,
         { checkOut: newCheckout, reason },
         { withCredentials: true }
       );

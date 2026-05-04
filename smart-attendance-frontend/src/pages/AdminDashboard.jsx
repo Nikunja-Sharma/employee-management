@@ -13,10 +13,9 @@ import {
 } from "recharts";
 
 import axios from "axios";
+import { API_ENDPOINTS } from "../config/api";
 
 axios.defaults.withCredentials = true;
-
-const API = "http://localhost:5001/api";
 
 const AdminDashboard = () => {
 
@@ -38,11 +37,11 @@ const AdminDashboard = () => {
       try {
 
         // ✅ TOTAL EMPLOYEES
-        const usersRes = await axios.get(`${API}/admin/users`);
+        const usersRes = await axios.get(API_ENDPOINTS.ADMIN_USERS);
         const totalEmployees = usersRes.data.length;
 
         // ✅ ALL ATTENDANCE (ADMIN)
-        const attendanceRes = await axios.get(`${API}/admin/attendance`);
+        const attendanceRes = await axios.get(API_ENDPOINTS.ADMIN_ATTENDANCE);
 
         // ✅ FIX 1: IST DATE (CRITICAL)
         const today = new Date().toLocaleDateString("en-CA", {
@@ -124,7 +123,7 @@ const AdminDashboard = () => {
         setChartData(weeklyData);
 
         // ================= AI =================
-        const predictionRes = await axios.get(`${API}/attendance/predictions`);
+        const predictionRes = await axios.get(API_ENDPOINTS.ATTENDANCE_PREDICTIONS);
 
         const highRisk = predictionRes.data.filter(
           (p) => p.risk === "High"

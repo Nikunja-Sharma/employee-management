@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { API_ENDPOINTS } from "../config/api";
 
 export default function ForgotPassword() {
 
@@ -39,7 +40,7 @@ export default function ForgotPassword() {
       setLoading(true);
 
       const res = await axios.post(
-        "http://localhost:5001/api/auth/send-otp",
+        API_ENDPOINTS.AUTH_SEND_OTP,
         { email }
       );
 
@@ -68,7 +69,7 @@ export default function ForgotPassword() {
       setLoading(true);
 
       const res = await axios.post(
-        "http://localhost:5001/api/auth/reset-password",
+        API_ENDPOINTS.AUTH_RESET_PASSWORD,
         {
           email,
           otp,

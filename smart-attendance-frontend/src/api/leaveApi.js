@@ -1,7 +1,5 @@
 import axios from "axios";
-
-const LEAVE_API = "http://localhost:5001/api/leave";
-const ADMIN_API = "http://localhost:5001/api/admin";
+import { API_ENDPOINTS } from "../config/api";
 
 axios.defaults.withCredentials = true;
 
@@ -9,26 +7,26 @@ axios.defaults.withCredentials = true;
 
 /* Apply for leave */
 export const applyLeave = async (leaveData) => {
-  const res = await axios.post(`${LEAVE_API}/apply`, leaveData);
+  const res = await axios.post(API_ENDPOINTS.LEAVE_APPLY, leaveData);
   return res.data;
 };
 
 /* Get my leave applications */
 export const getMyLeaves = async (params = {}) => {
   const queryString = new URLSearchParams(params).toString();
-  const res = await axios.get(`${LEAVE_API}/my-leaves?${queryString}`);
+  const res = await axios.get(`${API_ENDPOINTS.LEAVE_MY_LEAVES}?${queryString}`);
   return res.data;
 };
 
 /* Get leave details by ID */
 export const getLeaveById = async (leaveId) => {
-  const res = await axios.get(`${LEAVE_API}/details/${leaveId}`);
+  const res = await axios.get(`${API_ENDPOINTS.LEAVE_DETAILS}/${leaveId}`);
   return res.data;
 };
 
 /* Cancel leave application */
 export const cancelLeave = async (leaveId) => {
-  const res = await axios.delete(`${LEAVE_API}/cancel/${leaveId}`);
+  const res = await axios.delete(`${API_ENDPOINTS.LEAVE_CANCEL}/${leaveId}`);
   return res.data;
 };
 
@@ -37,19 +35,19 @@ export const cancelLeave = async (leaveId) => {
 /* Get all leave applications (Admin) */
 export const getAllLeaves = async (params = {}) => {
   const queryString = new URLSearchParams(params).toString();
-  const res = await axios.get(`${ADMIN_API}/leaves?${queryString}`);
+  const res = await axios.get(`${API_ENDPOINTS.ADMIN_LEAVES}?${queryString}`);
   return res.data;
 };
 
 /* Review leave application (Admin) */
 export const reviewLeave = async (leaveId, reviewData) => {
-  const res = await axios.put(`${ADMIN_API}/leaves/${leaveId}`, reviewData);
+  const res = await axios.put(`${API_ENDPOINTS.ADMIN_LEAVES}/${leaveId}`, reviewData);
   return res.data;
 };
 
 /* Get leave statistics (Admin) */
 export const getLeaveStats = async (params = {}) => {
   const queryString = new URLSearchParams(params).toString();
-  const res = await axios.get(`${ADMIN_API}/leave-stats?${queryString}`);
+  const res = await axios.get(`${API_ENDPOINTS.ADMIN_LEAVE_STATS}?${queryString}`);
   return res.data;
 };

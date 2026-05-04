@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
+import { API_ENDPOINTS } from "../config/api";
 
 export default function History() {
 
@@ -18,7 +19,7 @@ export default function History() {
     const fetchHistory = async () => {
       try {
         const res = await axios.get(
-          "http://localhost:5001/api/attendance/history",
+          API_ENDPOINTS.ATTENDANCE_HISTORY,
           { withCredentials: true }
         );
         setRecords(res.data);

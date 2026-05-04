@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import axios from "axios";
+import { API_ENDPOINTS } from "../config/api";
 
 export default function ScanQR() {
 
@@ -68,7 +69,7 @@ export default function ScanQR() {
       try {
 
         const res = await axios.post(
-          "http://localhost:5001/api/attendance/scan",
+          API_ENDPOINTS.ATTENDANCE_SCAN,
           {
             qr: window.scannedQR,
             latitude: pos.coords.latitude,

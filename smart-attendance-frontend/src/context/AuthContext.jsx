@@ -1,11 +1,10 @@
 import { createContext, useEffect, useState } from "react";
 import axios from "axios";
+import { API_ENDPOINTS } from "../config/api";
 
 export const AuthContext = createContext();
 
 axios.defaults.withCredentials = true;
-
-const API = "http://localhost:5001/api/auth";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -14,7 +13,7 @@ export const AuthProvider = ({ children }) => {
   // ================= CHECK AUTH =================
   const checkAuth = async () => {
     try {
-      const res = await axios.get(`${API}/me`);
+      const res = await axios.get(API_ENDPOINTS.AUTH_ME);
       setUser(res.data.user);
     } catch (error) {
       setUser(null);
@@ -30,7 +29,7 @@ export const AuthProvider = ({ children }) => {
   // ================= LOGIN =================
   const login = async (email, password) => {
   try {
-    const res = await axios.post(`${API}/login`, {
+    const res = await axios.post(API_ENDPOINTS.AUTH_LOGIN, {
       email,
       password,
     });
@@ -54,7 +53,7 @@ export const AuthProvider = ({ children }) => {
   // ================= LOGOUT =================
   const logout = async () => {
     try {
-      await axios.post(`${API}/logout`);
+      await axios.post(API_ENDPOINTS.AUTH_LOGOUT);
       setUser(null);
     } catch (error) {
       console.error("Logout failed");

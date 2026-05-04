@@ -1,6 +1,7 @@
 import QRCode from "react-qr-code";
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { API_ENDPOINTS } from "../config/api";
 
 export default function QRDisplay() {
 
@@ -11,7 +12,7 @@ export default function QRDisplay() {
     try {
 
       const res = await axios.get(
-        "http://localhost:5001/api/qr/current"
+        API_ENDPOINTS.QR_CURRENT
       );
 
       const data = res.data;
