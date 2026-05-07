@@ -1,36 +1,23 @@
 const Attendance = require("../models/Attendance");
 const User = require("../models/User");
+const AdminSettings = require("../models/AdminSettings");
 const moment = require("moment-timezone");
 
 const fs = require("fs");
 const path = require("path");
 
-// ENV
-const OFFICE_LAT = parseFloat(process.env.OFFICE_LAT) || 0;
-const OFFICE_LNG = parseFloat(process.env.OFFICE_LNG) || 0;
-const ALLOWED_RADIUS = parseInt(process.env.ALLOWED_RADIUS) || 100;
-
 // =======================
-// Distance Function
+// Haversine Distance Function
 // =======================
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371e3;
-
-  const φ1 = lat1 * Math.PI / 180;
-  const φ2 = lat2 * Math.PI / 180;
-
-  const Δφ = (lat2 - lat1) * Math.PI / 180;
-  const Δλ = (lon2 - lon1) * Math.PI / 180;
-
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 6371000; // Earth radius in meters
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
   const a =
-    Math.sin(Δφ / 2) ** 2 +
-    Math.cos(φ1) *
-      Math.cos(φ2) *
-      Math.sin(Δλ / 2) ** 2;
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-  return R * c;
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 // =======================
@@ -66,16 +53,35 @@ exports.scanQR = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const distance = getDistance(
+    // ✅ FETCH GEOFENCE SETTINGS FROM DATABASE
+    let geofenceConfig = await AdminSettings.findOne({ settingKey: "geofence_config" });
+    
+    // If no config exists, create default from environment variables
+    if (!geofenceConfig) {
+      geofenceConfig = await AdminSettings.create({
+        settingKey: "geofence_config",
+        officeLat: parseFloat(process.env.OFFICE_LAT) || 26.133402482129057,
+        officeLng: parseFloat(process.env.OFFICE_LNG) || 91.62278628045627,
+        allowedRadius: parseInt(process.env.DEFAULT_RADIUS) || 100
+      });
+    }
+
+    // ✅ CALCULATE DISTANCE USING HAVERSINE FORMULA
+    const distance = haversine(
       latitude,
       longitude,
-      OFFICE_LAT,
-      OFFICE_LNG
+      geofenceConfig.officeLat,
+      geofenceConfig.officeLng
     );
 
-    if (distance > ALLOWED_RADIUS) {
-      return res.status(400).json({
-        message: "Not inside office location",
+    // ✅ GEOFENCE VALIDATION
+    if (distance > geofenceConfig.allowedRadius) {
+      return res.status(403).json({
+        success: false,
+        reason: "OUTSIDE_ZONE",
+        message: `You are ${Math.round(distance)}m away from the office (limit: ${geofenceConfig.allowedRadius}m)`,
+        distance: Math.round(distance),
+        allowedRadius: geofenceConfig.allowedRadius
       });
     }
 
@@ -182,7 +188,13 @@ exports.scanQR = async (req, res) => {
           status,
           photo: photoPath,
           isLeave: false,
-          leaveId: null
+          leaveId: null,
+          // ✅ GEOLOCATION DATA
+          scanLat: latitude,
+          scanLng: longitude,
+          distanceM: Math.round(distance),
+          geoStatus: "APPROVED",
+          denialReason: null
         });
       } else {
         // Override leave attendance if exists
@@ -194,12 +206,20 @@ exports.scanQR = async (req, res) => {
         attendance.isLeave = false;
         attendance.leaveId = null;
         if (photoPath) attendance.photo = photoPath;
+        // ✅ GEOLOCATION DATA
+        attendance.scanLat = latitude;
+        attendance.scanLng = longitude;
+        attendance.distanceM = Math.round(distance);
+        attendance.geoStatus = "APPROVED";
+        attendance.denialReason = null;
         await attendance.save();
       }
 
       return res.json({
+        success: true,
         type: "checkin",
         message: "Check-in successful",
+        distance: Math.round(distance),
         time: now.format("HH:mm"),
         status,
       });

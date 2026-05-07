@@ -58,6 +58,10 @@ export default function Sidebar() {
             Leave Balance
           </Link>
 
+          <Link to="/admin/geofence-settings" className={linkClass("geofence-settings")}>
+            Geofence Settings
+          </Link>
+
           <Link to="/admin/reports" className={linkClass("reports")}>
             Reports
           </Link>

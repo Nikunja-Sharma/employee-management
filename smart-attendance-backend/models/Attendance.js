@@ -66,6 +66,33 @@ const attendanceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Leave",
       default: null
+    },
+
+    // ✅ GEOFENCE TRACKING
+    scanLat: {
+      type: Number,
+      default: null
+    },
+
+    scanLng: {
+      type: Number,
+      default: null
+    },
+
+    distanceM: {
+      type: Number,
+      default: null
+    },
+
+    geoStatus: {
+      type: String,
+      enum: ["APPROVED", "DENIED", null],
+      default: null
+    },
+
+    denialReason: {
+      type: String,
+      default: null
     }
 
   },

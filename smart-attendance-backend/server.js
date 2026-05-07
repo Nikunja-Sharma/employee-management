@@ -73,6 +73,7 @@ app.use("/api/qr", require("./routes/qr.routes"));
 app.use("/api/leave", require("./routes/leave.routes"));
 app.use("/api/report", require("./routes/report.routes"));
 app.use("/api/leave-balance", require("./routes/leaveBalance.routes"));
+app.use("/api/settings", require("./routes/adminSettings.routes"));
 
 /* =========================
    Admin Seeder Logic

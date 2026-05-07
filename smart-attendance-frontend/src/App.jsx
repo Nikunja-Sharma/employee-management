@@ -18,6 +18,7 @@ import AdminLeaves from "./pages/AdminLeaves";
 import Reports from "./pages/Reports";
 import MyReport from "./pages/MyReport";
 import LeaveBalance from "./pages/LeaveBalance";
+import GeofenceSettings from "./pages/GeofenceSettings";
 
 // Layouts
 import AdminLayout from "./layouts/AdminLayout";
@@ -54,6 +55,7 @@ function App() {
             <Route path="qr-display" element={<QRDisplay />} />
             <Route path="leaves" element={<AdminLeaves />} />
             <Route path="leave-balance" element={<LeaveBalance />} />
+            <Route path="geofence-settings" element={<GeofenceSettings />} />
             <Route path="reports" element={<Reports />} />
           </Route>
 
