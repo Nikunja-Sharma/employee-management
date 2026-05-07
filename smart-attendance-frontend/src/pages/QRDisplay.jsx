@@ -3,7 +3,6 @@ import { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { API_ENDPOINTS } from "../config/api";
 import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 import { Download } from "lucide-react";
 
 export default function QRDisplay() {
@@ -46,61 +45,97 @@ export default function QRDisplay() {
     setIsDownloading(true);
 
     try {
-      // Capture the QR code container as canvas
-      const canvas = await html2canvas(qrRef.current, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-      });
+      // Get the SVG element from the QR code
+      const svgElement = qrRef.current.querySelector("svg");
+      if (!svgElement) {
+        throw new Error("QR code SVG not found");
+      }
 
-      // Create PDF
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
+      // Convert SVG to canvas
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      
+      // Create an image from SVG
+      const img = new Image();
+      const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(svgBlob);
 
-      // Calculate dimensions to center QR code
-      const imgWidth = 150;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      const x = (pdf.internal.pageSize.getWidth() - imgWidth) / 2;
-      const y = 30;
+      img.onload = () => {
+        // Set canvas size
+        canvas.width = 800;
+        canvas.height = 800;
+        
+        // Draw white background
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw QR code
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        
+        // Create PDF
+        const pdf = new jsPDF({
+          orientation: "portrait",
+          unit: "mm",
+          format: "a4",
+        });
 
-      // Add title
-      pdf.setFontSize(20);
-      pdf.text("Employee Attendance QR Code", pdf.internal.pageSize.getWidth() / 2, 20, {
-        align: "center",
-      });
+        // Calculate dimensions to center QR code
+        const imgWidth = 120;
+        const imgHeight = 120;
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const x = (pageWidth - imgWidth) / 2;
+        const y = 50;
 
-      // Add QR code image
-      const imgData = canvas.toDataURL("image/png");
-      pdf.addImage(imgData, "PNG", x, y, imgWidth, imgHeight);
+        // Add title
+        pdf.setFontSize(22);
+        pdf.setFont(undefined, "bold");
+        pdf.text("Employee Attendance QR Code", pageWidth / 2, 30, {
+          align: "center",
+        });
 
-      // Add footer text
-      pdf.setFontSize(12);
-      pdf.text(
-        "Scan this QR code to mark your attendance",
-        pdf.internal.pageSize.getWidth() / 2,
-        y + imgHeight + 15,
-        { align: "center" }
-      );
+        // Add QR code image
+        const imgData = canvas.toDataURL("image/png");
+        pdf.addImage(imgData, "PNG", x, y, imgWidth, imgHeight);
 
-      // Add timestamp
-      pdf.setFontSize(10);
-      pdf.setTextColor(128, 128, 128);
-      pdf.text(
-        `Generated on: ${new Date().toLocaleString()}`,
-        pdf.internal.pageSize.getWidth() / 2,
-        y + imgHeight + 25,
-        { align: "center" }
-      );
+        // Add instruction text
+        pdf.setFontSize(14);
+        pdf.setFont(undefined, "normal");
+        pdf.text(
+          "Scan this QR code to mark your attendance",
+          pageWidth / 2,
+          y + imgHeight + 20,
+          { align: "center" }
+        );
 
-      // Save PDF
-      pdf.save(`attendance-qr-${new Date().toISOString().split("T")[0]}.pdf`);
+        // Add timestamp
+        pdf.setFontSize(10);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(
+          `Generated on: ${new Date().toLocaleString()}`,
+          pageWidth / 2,
+          y + imgHeight + 30,
+          { align: "center" }
+        );
+
+        // Save PDF
+        pdf.save(`attendance-qr-${new Date().toISOString().split("T")[0]}.pdf`);
+        
+        // Cleanup
+        URL.revokeObjectURL(url);
+        setIsDownloading(false);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        throw new Error("Failed to load QR code image");
+      };
+
+      img.src = url;
 
     } catch (error) {
       console.error("Error generating PDF:", error);
       alert("Failed to generate PDF. Please try again.");
-    } finally {
       setIsDownloading(false);
     }
   };
@@ -124,18 +159,12 @@ export default function QRDisplay() {
         Employee Attendance QR
       </h1>
 
-      <div 
-        ref={qrRef}
-        className="bg-white p-10 rounded-xl shadow min-w-[300px] min-h-[300px] flex flex-col items-center justify-center"
-      >
+      <div className="bg-white p-10 rounded-xl shadow min-w-[300px] min-h-[300px] flex flex-col items-center justify-center">
 
         {qrValue ? (
-          <>
+          <div ref={qrRef}>
             <QRCode value={qrValue} size={260} />
-            <p className="mt-4 text-gray-600 text-center">
-              Scan this QR to mark attendance
-            </p>
-          </>
+          </div>
         ) : (
           <p className="text-gray-500 text-lg text-center">
             {message}
@@ -144,11 +173,15 @@ export default function QRDisplay() {
 
       </div>
 
+      <p className="mt-6 text-gray-600">
+        Scan this QR to mark attendance
+      </p>
+
       {qrValue && (
         <button
           onClick={downloadQRAsPDF}
           disabled={isDownloading}
-          className="mt-6 flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
+          className="mt-4 flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition"
         >
           <Download size={20} />
           {isDownloading ? "Generating PDF..." : "Download QR as PDF"}
