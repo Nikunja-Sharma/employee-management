@@ -54,6 +54,10 @@ export default function Sidebar() {
             Leave Management
           </Link>
 
+          <Link to="/admin/leave-balance" className={linkClass("leave-balance")}>
+            Leave Balance
+          </Link>
+
           <Link to="/admin/reports" className={linkClass("reports")}>
             Reports
           </Link>

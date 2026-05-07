@@ -2,6 +2,7 @@ const Leave = require("../models/Leave");
 const User = require("../models/User");
 const Attendance = require("../models/Attendance");
 const mongoose = require("mongoose");
+const { updateLeaveBalanceOnApproval, restoreLeaveBalanceOnRejection } = require("./leaveBalance.controller");
 
 // Helper function to create attendance records for approved leave
 const createLeaveAttendanceRecords = async (leave) => {
@@ -162,6 +163,27 @@ const applyLeave = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Employee not found"
+      });
+    }
+
+    // ✅ CHECK LEAVE BALANCE
+    const leaveBalance = employee.leaveBalance[leaveType];
+    if (!leaveBalance) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid leave type"
+      });
+    }
+
+    if (leaveBalance.remaining < totalDays) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient leave balance. You have ${leaveBalance.remaining} ${leaveType} leave(s) remaining, but requested ${totalDays} day(s).`,
+        data: {
+          requested: totalDays,
+          available: leaveBalance.remaining,
+          leaveType
+        }
       });
     }
 
@@ -373,13 +395,18 @@ const reviewLeave = async (req, res) => {
 
     // ✅ CREATE OR REMOVE ATTENDANCE RECORDS BASED ON STATUS
     let attendanceMessage = "";
+    let balanceMessage = "";
     
     if (status === "approved") {
       try {
         const recordsCreated = await createLeaveAttendanceRecords(leave);
         attendanceMessage = ` (${recordsCreated} attendance records created)`;
+        
+        // ✅ UPDATE LEAVE BALANCE
+        const updatedBalance = await updateLeaveBalanceOnApproval(leave);
+        balanceMessage = ` - ${leave.totalDays} ${leave.leaveType} leave(s) deducted`;
       } catch (error) {
-        console.error("Failed to create attendance records:", error);
+        console.error("Failed to create attendance records or update balance:", error);
         attendanceMessage = " (Warning: Failed to create attendance records)";
       }
     } else if (status === "rejected") {
@@ -395,7 +422,7 @@ const reviewLeave = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Leave application ${status} successfully${attendanceMessage}`,
+      message: `Leave application ${status} successfully${attendanceMessage}${balanceMessage}`,
       data: leave
     });
 

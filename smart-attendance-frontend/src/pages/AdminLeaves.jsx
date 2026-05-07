@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { getAllLeaves, reviewLeave, getLeaveStats } from "../api/leaveApi";
+import { getEmployeeLeaveBalance } from "../api/leaveBalanceApi";
 
 export default function AdminLeaves() {
   const [leaves, setLeaves] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [selectedLeave, setSelectedLeave] = useState(null);
+  const [employeeBalance, setEmployeeBalance] = useState(null);
+  const [loadingBalance, setLoadingBalance] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewData, setReviewData] = useState({
     status: "approved",
@@ -107,6 +110,19 @@ export default function AdminLeaves() {
       return;
     }
 
+    // Check if approving and insufficient balance
+    if (reviewData.status === "approved" && employeeBalance) {
+      const leaveType = selectedLeave.leaveType;
+      const requestedDays = selectedLeave.totalDays;
+      const availableDays = employeeBalance.leaveBalance[leaveType]?.remaining || 0;
+      
+      if (availableDays < requestedDays) {
+        if (!confirm(`⚠️ Warning: Employee has only ${availableDays} ${leaveType} leave(s) remaining, but requested ${requestedDays} day(s).\n\nDo you still want to approve this leave?`)) {
+          return;
+        }
+      }
+    }
+
     try {
       setLoading(true);
       const response = await reviewLeave(selectedLeave._id, reviewData);
@@ -118,6 +134,7 @@ export default function AdminLeaves() {
         
         setShowReviewModal(false);
         setSelectedLeave(null);
+        setEmployeeBalance(null);
         setReviewData({ status: "approved", adminComments: "" });
         fetchLeaves(filters.page); // Refresh current page
         fetchStats(); // Refresh stats
@@ -140,10 +157,26 @@ export default function AdminLeaves() {
   };
 
   // Open review modal
-  const openReviewModal = (leave) => {
+  const openReviewModal = async (leave) => {
     setSelectedLeave(leave);
     setReviewData({ status: "approved", adminComments: "" });
     setShowReviewModal(true);
+    
+    // Fetch employee's leave balance
+    if (leave.employee?._id) {
+      try {
+        setLoadingBalance(true);
+        const response = await getEmployeeLeaveBalance(leave.employee._id);
+        if (response.success) {
+          setEmployeeBalance(response.data);
+        }
+      } catch (error) {
+        console.error("Error fetching employee balance:", error);
+        setEmployeeBalance(null);
+      } finally {
+        setLoadingBalance(false);
+      }
+    }
   };
 
   return (
@@ -236,19 +269,87 @@ export default function AdminLeaves() {
 
       {/* Review Modal */}
       {showReviewModal && selectedLeave && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Review Leave Application</h2>
             
             {/* Leave Details */}
             <div className="mb-4 p-4 bg-gray-50 rounded-lg">
               <div className="text-sm space-y-2">
                 <div><strong>Employee:</strong> {selectedLeave.employee?.name} ({selectedLeave.employee?.employeeId})</div>
+                <div><strong>Department:</strong> {selectedLeave.employee?.department}</div>
                 <div><strong>Type:</strong> <span className="capitalize">{selectedLeave.leaveType}</span></div>
                 <div><strong>Dates:</strong> {formatDate(selectedLeave.startDate)} - {formatDate(selectedLeave.endDate)}</div>
                 <div><strong>Days:</strong> {selectedLeave.totalDays}</div>
                 <div><strong>Reason:</strong> {selectedLeave.reason}</div>
               </div>
+            </div>
+
+            {/* Employee Leave Balance */}
+            <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h3 className="text-sm font-semibold text-blue-900 mb-3">📊 Employee Leave Balance</h3>
+              
+              {loadingBalance ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-xs text-gray-600 mt-2">Loading balance...</p>
+                </div>
+              ) : employeeBalance ? (
+                <div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                    {Object.entries(employeeBalance.leaveBalance).map(([type, balance]) => {
+                      const isRequestedType = type === selectedLeave.leaveType;
+                      const willExceed = isRequestedType && balance.remaining < selectedLeave.totalDays;
+                      
+                      return (
+                        <div 
+                          key={type} 
+                          className={`p-2 rounded text-xs ${
+                            isRequestedType 
+                              ? willExceed 
+                                ? 'bg-red-100 border-2 border-red-400' 
+                                : 'bg-green-100 border-2 border-green-400'
+                              : 'bg-white border border-gray-200'
+                          }`}
+                        >
+                          <p className="font-medium capitalize text-gray-700">{type}</p>
+                          <p className="text-lg font-bold text-gray-900">
+                            {balance.remaining}/{balance.total}
+                          </p>
+                          <p className="text-gray-600">Used: {balance.used}</p>
+                          {isRequestedType && (
+                            <p className={`mt-1 font-semibold ${willExceed ? 'text-red-600' : 'text-green-600'}`}>
+                              {willExceed ? '⚠️ Insufficient!' : '✓ Available'}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Warning if insufficient balance */}
+                  {employeeBalance.leaveBalance[selectedLeave.leaveType]?.remaining < selectedLeave.totalDays && (
+                    <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-800">
+                      <strong>⚠️ Warning:</strong> Employee has only{' '}
+                      <strong>{employeeBalance.leaveBalance[selectedLeave.leaveType]?.remaining}</strong>{' '}
+                      {selectedLeave.leaveType} leave(s) remaining, but requested{' '}
+                      <strong>{selectedLeave.totalDays}</strong> day(s).
+                      {reviewData.status === "approved" && (
+                        <span className="block mt-1">
+                          Approving will result in negative balance.
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Summary */}
+                  <div className="mt-3 pt-3 border-t border-blue-200 text-xs text-gray-600">
+                    <strong>Total:</strong> {employeeBalance.summary.totalRemaining}/{employeeBalance.summary.totalAllocated} days remaining
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-600">Unable to load leave balance</p>
+              )}
             </div>
 
             {/* Review Form */}
@@ -290,7 +391,10 @@ export default function AdminLeaves() {
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowReviewModal(false)}
+                  onClick={() => {
+                    setShowReviewModal(false);
+                    setEmployeeBalance(null);
+                  }}
                   className="flex-1 bg-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-400 transition"
                 >
                   Cancel
