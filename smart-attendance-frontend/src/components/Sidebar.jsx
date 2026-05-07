@@ -46,8 +46,16 @@ export default function Sidebar() {
             Attendance
           </Link>
 
+          <Link to="/admin/qr-display" className={linkClass("qr-display")}>
+            QR Display
+          </Link>
+
           <Link to="/admin/leaves" className={linkClass("leaves")}>
             Leave Management
+          </Link>
+
+          <Link to="/admin/reports" className={linkClass("reports")}>
+            Reports
           </Link>
 
         </nav>

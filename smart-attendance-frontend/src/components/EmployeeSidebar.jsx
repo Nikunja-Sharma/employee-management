@@ -51,6 +51,10 @@ export default function EmployeeSidebar() {
             My Leaves
           </Link>
 
+          <Link to="/employee/report" className={linkClass("report")}>
+            My Report
+          </Link>
+
         </nav>
 
       </div>

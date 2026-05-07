@@ -15,6 +15,8 @@ import Attendance from "./pages/Attendance";
 import ForgotPassword from "./pages/ForgotPassword";
 import EmployeeLeaves from "./pages/EmployeeLeaves";
 import AdminLeaves from "./pages/AdminLeaves";
+import Reports from "./pages/Reports";
+import MyReport from "./pages/MyReport";
 
 // Layouts
 import AdminLayout from "./layouts/AdminLayout";
@@ -33,8 +35,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          {/* QR Display */}
-          <Route path="/qr-display" element={<QRDisplay />} />
+          {/* QR Display - Public route for display screens */}
+          <Route path="/qr-display-public" element={<QRDisplay />} />
 
           {/* ================= ADMIN ROUTES ================= */}
           <Route
@@ -48,7 +50,9 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="employees" element={<Employees />} />
             <Route path="attendance" element={<Attendance />} />
+            <Route path="qr-display" element={<QRDisplay />} />
             <Route path="leaves" element={<AdminLeaves />} />
+            <Route path="reports" element={<Reports />} />
           </Route>
 
           {/* ================= EMPLOYEE ROUTES ================= */}
@@ -64,6 +68,7 @@ function App() {
             <Route path="scan" element={<ScanQR />} />
             <Route path="history" element={<History />} />
             <Route path="leaves" element={<EmployeeLeaves />} />
+            <Route path="report" element={<MyReport />} />
           </Route>
 
           {/* OPTIONAL: fallback (if wrong URL entered) */}
