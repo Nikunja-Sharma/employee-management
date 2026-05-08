@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
-import { MapPin, Clock, Save, AlertCircle, Navigation, ExternalLink } from "lucide-react";
+import { MapPin, Clock, Save, AlertCircle, Navigation, ExternalLink, Calendar } from "lucide-react";
 import {
   getGeofenceConfig,
   updateGeofenceConfig,
   getAttendanceTimes,
-  updateAttendanceTimes
+  updateAttendanceTimes,
+  getLeaveDefaults,
+  updateLeaveDefaults
 } from "../api/settingsApi";
 
 const Settings = () => {
@@ -29,6 +31,17 @@ const Settings = () => {
     lateThreshold: ""
   });
 
+  // Leave defaults state
+  const [leaveDefaults, setLeaveDefaults] = useState({
+    casual: "",
+    sick: "",
+    annual: "",
+    emergency: "",
+    maternity: "",
+    paternity: "",
+    other: ""
+  });
+
   useEffect(() => {
     fetchSettings();
   }, []);
@@ -47,6 +60,12 @@ const Settings = () => {
       const timesRes = await getAttendanceTimes();
       if (timesRes.success) {
         setTimes(timesRes.data);
+      }
+
+      // Fetch leave defaults
+      const leaveRes = await getLeaveDefaults();
+      if (leaveRes.success) {
+        setLeaveDefaults(leaveRes.data);
       }
 
     } catch (error) {
@@ -130,6 +149,31 @@ const Settings = () => {
     // Open Google Maps with the coordinates
     const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}&z=17`;
     window.open(mapsUrl, "_blank");
+  };
+
+  const handleLeaveDefaultsSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const response = await updateLeaveDefaults(leaveDefaults);
+
+      if (response.success) {
+        setMessage({
+          type: "success",
+          text: "Leave defaults updated successfully!"
+        });
+        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      }
+    } catch (error) {
+      setMessage({
+        type: "error",
+        text: error.response?.data?.message || "Failed to update leave defaults"
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleGeofenceSubmit = async (e) => {
@@ -431,12 +475,157 @@ const Settings = () => {
         </div>
       </div>
 
+      {/* Leave Defaults Settings */}
+      <div className="bg-white rounded-xl shadow p-6">
+        <div className="flex items-center gap-2 mb-6">
+          <Calendar className="w-6 h-6 text-purple-600" />
+          <h3 className="text-xl font-semibold">Leave Allocation Defaults</h3>
+        </div>
+
+        <form onSubmit={handleLeaveDefaultsSubmit} className="space-y-4">
+          <p className="text-sm text-gray-600 mb-4">
+            Set default leave allocations for new employees (days per year)
+          </p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Casual Leave
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="365"
+                value={leaveDefaults.casual}
+                onChange={(e) =>
+                  setLeaveDefaults({ ...leaveDefaults, casual: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sick Leave
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="365"
+                value={leaveDefaults.sick}
+                onChange={(e) =>
+                  setLeaveDefaults({ ...leaveDefaults, sick: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Annual Leave
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="365"
+                value={leaveDefaults.annual}
+                onChange={(e) =>
+                  setLeaveDefaults({ ...leaveDefaults, annual: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Emergency Leave
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="365"
+                value={leaveDefaults.emergency}
+                onChange={(e) =>
+                  setLeaveDefaults({ ...leaveDefaults, emergency: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Maternity Leave
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="365"
+                value={leaveDefaults.maternity}
+                onChange={(e) =>
+                  setLeaveDefaults({ ...leaveDefaults, maternity: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Paternity Leave
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="365"
+                value={leaveDefaults.paternity}
+                onChange={(e) =>
+                  setLeaveDefaults({ ...leaveDefaults, paternity: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+              />
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Other Leave
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="365"
+                value={leaveDefaults.other}
+                onChange={(e) =>
+                  setLeaveDefaults({ ...leaveDefaults, other: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                required
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={saving}
+            className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          >
+            <Save className="w-4 h-4" />
+            {saving ? "Saving..." : "Save Leave Defaults"}
+          </button>
+        </form>
+      </div>
+
       {/* Info Section */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
         <h4 className="font-semibold text-blue-900 mb-2">ℹ️ Important Information</h4>
         <ul className="text-sm text-blue-800 space-y-1">
           <li>• <strong>Use Current:</strong> Automatically set office location to your current GPS position</li>
           <li>• <strong>Check on Map:</strong> Opens Google Maps to verify the configured location</li>
+          <li>• <strong>Leave Defaults:</strong> Set default leave allocations that will be applied to new employees</li>
           <li>• Geofence settings control the allowed location radius for attendance</li>
           <li>• Attendance times define when employees can check-in and check-out</li>
           <li>• All location data (latitude, longitude, distance) is logged in the database</li>

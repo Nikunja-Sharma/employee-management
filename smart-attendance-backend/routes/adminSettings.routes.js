@@ -7,7 +7,9 @@ const {
   getGeofenceConfig,
   updateGeofenceConfig,
   getAttendanceTimes,
-  updateAttendanceTimes
+  updateAttendanceTimes,
+  getLeaveDefaults,
+  updateLeaveDefaults
 } = require("../controllers/adminSettings.controller");
 
 // Get geofence configuration (accessible to all authenticated users)
@@ -21,5 +23,11 @@ router.get("/attendance-times", auth, getAttendanceTimes);
 
 // Update attendance times configuration (admin only)
 router.put("/attendance-times", auth, requireAdmin, updateAttendanceTimes);
+
+// Get leave defaults configuration (accessible to all authenticated users)
+router.get("/leave-defaults", auth, getLeaveDefaults);
+
+// Update leave defaults configuration (admin only)
+router.put("/leave-defaults", auth, requireAdmin, updateLeaveDefaults);
 
 module.exports = router;

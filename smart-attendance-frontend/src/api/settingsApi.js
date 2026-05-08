@@ -24,3 +24,14 @@ export const updateAttendanceTimes = async (data) => {
   const response = await axios.put(API_ENDPOINTS.SETTINGS_ATTENDANCE_TIMES, data);
   return response.data;
 };
+
+// Leave Defaults Settings
+export const getLeaveDefaults = async () => {
+  const response = await axios.get(API_ENDPOINTS.SETTINGS_LEAVE_DEFAULTS);
+  return response.data;
+};
+
+export const updateLeaveDefaults = async (data) => {
+  const response = await axios.put(API_ENDPOINTS.SETTINGS_LEAVE_DEFAULTS, data);
+  return response.data;
+};

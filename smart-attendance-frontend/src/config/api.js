@@ -37,6 +37,7 @@ export const API_ENDPOINTS = {
   // Settings endpoints
   SETTINGS_GEOFENCE: `${API_BASE_URL}/settings/geofence`,
   SETTINGS_ATTENDANCE_TIMES: `${API_BASE_URL}/settings/attendance-times`,
+  SETTINGS_LEAVE_DEFAULTS: `${API_BASE_URL}/settings/leave-defaults`,
 };
 
 export default API_BASE_URL;

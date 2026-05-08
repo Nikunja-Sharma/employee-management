@@ -1,5 +1,40 @@
 const User = require("../models/User");
 const Leave = require("../models/Leave");
+const AdminSettings = require("../models/AdminSettings");
+
+// Helper function to get leave defaults from settings
+const getLeaveDefaultsFromSettings = async () => {
+  try {
+    const config = await AdminSettings.findOne({ settingKey: "leave_defaults" });
+    
+    if (config && config.leaveDefaults) {
+      return config.leaveDefaults;
+    }
+    
+    // Return hardcoded defaults if no config exists
+    return {
+      casual: 12,
+      sick: 12,
+      annual: 15,
+      emergency: 5,
+      maternity: 180,
+      paternity: 15,
+      other: 5
+    };
+  } catch (error) {
+    console.error("Error fetching leave defaults:", error);
+    // Return hardcoded defaults on error
+    return {
+      casual: 12,
+      sick: 12,
+      annual: 15,
+      emergency: 5,
+      maternity: 180,
+      paternity: 15,
+      other: 5
+    };
+  }
+};
 
 // Get leave balance for a specific employee
 const getEmployeeLeaveBalance = async (req, res) => {
@@ -25,14 +60,16 @@ const getEmployeeLeaveBalance = async (req, res) => {
 
     // ✅ Initialize leave balance if it doesn't exist (for existing users)
     if (!user.leaveBalance) {
+      const defaults = await getLeaveDefaultsFromSettings();
+      
       user.leaveBalance = {
-        casual: { total: 12, used: 0, remaining: 12 },
-        sick: { total: 12, used: 0, remaining: 12 },
-        annual: { total: 15, used: 0, remaining: 15 },
-        emergency: { total: 5, used: 0, remaining: 5 },
-        maternity: { total: 180, used: 0, remaining: 180 },
-        paternity: { total: 15, used: 0, remaining: 15 },
-        other: { total: 5, used: 0, remaining: 5 }
+        casual: { total: defaults.casual, used: 0, remaining: defaults.casual },
+        sick: { total: defaults.sick, used: 0, remaining: defaults.sick },
+        annual: { total: defaults.annual, used: 0, remaining: defaults.annual },
+        emergency: { total: defaults.emergency, used: 0, remaining: defaults.emergency },
+        maternity: { total: defaults.maternity, used: 0, remaining: defaults.maternity },
+        paternity: { total: defaults.paternity, used: 0, remaining: defaults.paternity },
+        other: { total: defaults.other, used: 0, remaining: defaults.other }
       };
       user.leaveBalanceYear = new Date().getFullYear();
       await user.save();
@@ -105,6 +142,23 @@ const getAllEmployeesLeaveBalance = async (req, res) => {
     const employeesWithSummary = employees.map(emp => {
       // ✅ Initialize leave balance if it doesn't exist
       if (!emp.leaveBalance) {
+        // Use async initialization with defaults
+        (async () => {
+          const defaults = await getLeaveDefaultsFromSettings();
+          emp.leaveBalance = {
+            casual: { total: defaults.casual, used: 0, remaining: defaults.casual },
+            sick: { total: defaults.sick, used: 0, remaining: defaults.sick },
+            annual: { total: defaults.annual, used: 0, remaining: defaults.annual },
+            emergency: { total: defaults.emergency, used: 0, remaining: defaults.emergency },
+            maternity: { total: defaults.maternity, used: 0, remaining: defaults.maternity },
+            paternity: { total: defaults.paternity, used: 0, remaining: defaults.paternity },
+            other: { total: defaults.other, used: 0, remaining: defaults.other }
+          };
+          emp.leaveBalanceYear = new Date().getFullYear();
+          emp.save().catch(err => console.error('Error saving leave balance:', err));
+        })();
+        
+        // Set temporary defaults for immediate response
         emp.leaveBalance = {
           casual: { total: 12, used: 0, remaining: 12 },
           sick: { total: 12, used: 0, remaining: 12 },
@@ -115,8 +169,6 @@ const getAllEmployeesLeaveBalance = async (req, res) => {
           other: { total: 5, used: 0, remaining: 5 }
         };
         emp.leaveBalanceYear = new Date().getFullYear();
-        // Save asynchronously (don't wait)
-        emp.save().catch(err => console.error('Error saving leave balance:', err));
       }
 
       const totalAllocated = Object.values(emp.leaveBalance).reduce((sum, leave) => sum + leave.total, 0);
@@ -232,6 +284,9 @@ const resetLeaveBalanceForYear = async (req, res) => {
       });
     }
 
+    // Get current leave defaults
+    const defaults = await getLeaveDefaultsFromSettings();
+
     const query = userId ? { _id: userId, role: "employee" } : { role: "employee" };
     
     const result = await User.updateMany(
@@ -239,19 +294,26 @@ const resetLeaveBalanceForYear = async (req, res) => {
       {
         $set: {
           'leaveBalance.casual.used': 0,
-          'leaveBalance.casual.remaining': 12,
+          'leaveBalance.casual.remaining': defaults.casual,
+          'leaveBalance.casual.total': defaults.casual,
           'leaveBalance.sick.used': 0,
-          'leaveBalance.sick.remaining': 12,
+          'leaveBalance.sick.remaining': defaults.sick,
+          'leaveBalance.sick.total': defaults.sick,
           'leaveBalance.annual.used': 0,
-          'leaveBalance.annual.remaining': 15,
+          'leaveBalance.annual.remaining': defaults.annual,
+          'leaveBalance.annual.total': defaults.annual,
           'leaveBalance.emergency.used': 0,
-          'leaveBalance.emergency.remaining': 5,
+          'leaveBalance.emergency.remaining': defaults.emergency,
+          'leaveBalance.emergency.total': defaults.emergency,
           'leaveBalance.maternity.used': 0,
-          'leaveBalance.maternity.remaining': 180,
+          'leaveBalance.maternity.remaining': defaults.maternity,
+          'leaveBalance.maternity.total': defaults.maternity,
           'leaveBalance.paternity.used': 0,
-          'leaveBalance.paternity.remaining': 15,
+          'leaveBalance.paternity.remaining': defaults.paternity,
+          'leaveBalance.paternity.total': defaults.paternity,
           'leaveBalance.other.used': 0,
-          'leaveBalance.other.remaining': 5,
+          'leaveBalance.other.remaining': defaults.other,
+          'leaveBalance.other.total': defaults.other,
           'leaveBalanceYear': year
         }
       }
@@ -262,7 +324,8 @@ const resetLeaveBalanceForYear = async (req, res) => {
       message: `Leave balance reset for ${result.modifiedCount} employee(s) for year ${year}`,
       data: {
         employeesUpdated: result.modifiedCount,
-        year
+        year,
+        defaults
       }
     });
 

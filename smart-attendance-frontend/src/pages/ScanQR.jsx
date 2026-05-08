@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import axios from "axios";
 import { API_ENDPOINTS } from "../config/api";
+import { SwitchCamera } from "lucide-react";
 
 export default function ScanQR() {
 
@@ -13,36 +14,72 @@ export default function ScanQR() {
   const [showCamera, setShowCamera] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [cameras, setCameras] = useState([]);
+  const [currentCameraIndex, setCurrentCameraIndex] = useState(0);
 
-  const startScanner = async () => {
-    if (scannerStarted) return;
-
-    const cameras = await Html5Qrcode.getCameras();
-    const cameraId = cameras[0].id;
-
-    const scanner = new Html5Qrcode("reader");
-    scannerRef.current = scanner;
-
-    await scanner.start(cameraId, { fps: 10, qrbox: 250 },
-
-      async (decodedText) => {
-
-        await scanner.stop();
-        await scanner.clear();
-        setScannerStarted(false);
-
-        // 👉 OPEN CAMERA
-        setShowCamera(true);
-
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        videoRef.current.srcObject = stream;
-
-        // Save QR for later
-        window.scannedQR = decodedText;
+  const startScanner = async (cameraIndex = 0) => {
+    // Stop existing scanner if running
+    if (scannerStarted && scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        await scannerRef.current.clear();
+      } catch (err) {
+        console.log("Scanner already stopped");
       }
-    );
+    }
 
-    setScannerStarted(true);
+    try {
+      const availableCameras = await Html5Qrcode.getCameras();
+      setCameras(availableCameras);
+      
+      if (availableCameras.length === 0) {
+        setMessage("❌ No cameras found");
+        return;
+      }
+
+      // Use the specified camera index or default to 0
+      const cameraId = availableCameras[cameraIndex]?.id || availableCameras[0].id;
+      setCurrentCameraIndex(cameraIndex);
+
+      const scanner = new Html5Qrcode("reader");
+      scannerRef.current = scanner;
+
+      await scanner.start(cameraId, { fps: 10, qrbox: 250 },
+
+        async (decodedText) => {
+
+          await scanner.stop();
+          await scanner.clear();
+          setScannerStarted(false);
+
+          // 👉 OPEN CAMERA
+          setShowCamera(true);
+
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          videoRef.current.srcObject = stream;
+
+          // Save QR for later
+          window.scannedQR = decodedText;
+        }
+      );
+
+      setScannerStarted(true);
+      setMessage("");
+    } catch (error) {
+      console.error("Error starting scanner:", error);
+      setMessage("❌ Failed to start camera");
+      setScannerStarted(false);
+    }
+  };
+
+  const switchCamera = async () => {
+    if (cameras.length <= 1) {
+      setMessage("⚠️ Only one camera available");
+      return;
+    }
+
+    const nextIndex = (currentCameraIndex + 1) % cameras.length;
+    await startScanner(nextIndex);
   };
 
   // ================= CAPTURE PHOTO =================
@@ -107,12 +144,30 @@ export default function ScanQR() {
       </h1>
 
       {!scannerStarted && !showCamera && (
-        <button onClick={startScanner} className="bg-blue-600 text-white px-6 py-3 rounded-lg">
+        <button onClick={() => startScanner()} className="bg-blue-600 text-white px-6 py-3 rounded-lg">
           Start Scanner
         </button>
       )}
 
-      <div id="reader" style={{ width: "350px", marginTop: "20px" }} />
+      <div className="relative">
+        <div id="reader" style={{ width: "350px", marginTop: "20px" }} />
+        
+        {scannerStarted && cameras.length > 1 && (
+          <button
+            onClick={switchCamera}
+            className="absolute top-6 right-2 bg-white/90 hover:bg-white text-gray-800 p-3 rounded-full shadow-lg transition-all"
+            title="Switch Camera"
+          >
+            <SwitchCamera size={24} />
+          </button>
+        )}
+      </div>
+
+      {scannerStarted && cameras.length > 1 && (
+        <div className="mt-4 text-sm text-gray-600">
+          Camera: {currentCameraIndex + 1} of {cameras.length}
+        </div>
+      )}
 
       {showCamera && (
         <div className="mt-6 flex flex-col items-center">

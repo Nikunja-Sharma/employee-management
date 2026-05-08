@@ -258,9 +258,116 @@ const updateAttendanceTimes = async (req, res) => {
   }
 };
 
+// Get leave defaults configuration
+const getLeaveDefaults = async (req, res) => {
+  try {
+    let config = await AdminSettings.findOne({ settingKey: "leave_defaults" });
+
+    // If no config exists, create default
+    if (!config) {
+      config = await AdminSettings.create({
+        settingKey: "leave_defaults",
+        leaveDefaults: {
+          casual: 12,
+          sick: 12,
+          annual: 15,
+          emergency: 5,
+          maternity: 180,
+          paternity: 15,
+          other: 5
+        }
+      });
+    }
+
+    console.log(`📋 Leave Defaults Retrieved:`, config.leaveDefaults);
+
+    res.status(200).json({
+      success: true,
+      data: config.leaveDefaults,
+      updatedAt: config.updatedAt
+    });
+
+  } catch (error) {
+    console.error("Get leave defaults error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+// Update leave defaults configuration (Admin only)
+const updateLeaveDefaults = async (req, res) => {
+  try {
+    const { casual, sick, annual, emergency, maternity, paternity, other } = req.body;
+    const adminId = req.user.id;
+
+    // Validation
+    const leaveTypes = { casual, sick, annual, emergency, maternity, paternity, other };
+    
+    for (const [type, value] of Object.entries(leaveTypes)) {
+      if (value === undefined || value < 0 || value > 365) {
+        return res.status(400).json({
+          success: false,
+          message: `${type} leave must be between 0 and 365 days`
+        });
+      }
+    }
+
+    // Update or create config
+    let config = await AdminSettings.findOne({ settingKey: "leave_defaults" });
+
+    if (config) {
+      config.leaveDefaults = {
+        casual: parseInt(casual),
+        sick: parseInt(sick),
+        annual: parseInt(annual),
+        emergency: parseInt(emergency),
+        maternity: parseInt(maternity),
+        paternity: parseInt(paternity),
+        other: parseInt(other)
+      };
+      config.updatedBy = adminId;
+      await config.save();
+    } else {
+      config = await AdminSettings.create({
+        settingKey: "leave_defaults",
+        leaveDefaults: {
+          casual: parseInt(casual),
+          sick: parseInt(sick),
+          annual: parseInt(annual),
+          emergency: parseInt(emergency),
+          maternity: parseInt(maternity),
+          paternity: parseInt(paternity),
+          other: parseInt(other)
+        },
+        updatedBy: adminId
+      });
+    }
+
+    console.log(`✅ Leave Defaults Updated by Admin ID=${adminId}:`, config.leaveDefaults);
+
+    res.status(200).json({
+      success: true,
+      message: "Leave defaults updated successfully",
+      data: config.leaveDefaults,
+      updatedAt: config.updatedAt
+    });
+
+  } catch (error) {
+    console.error("Update leave defaults error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
 module.exports = {
   getGeofenceConfig,
   updateGeofenceConfig,
   getAttendanceTimes,
-  updateAttendanceTimes
+  updateAttendanceTimes,
+  getLeaveDefaults,
+  updateLeaveDefaults
 };

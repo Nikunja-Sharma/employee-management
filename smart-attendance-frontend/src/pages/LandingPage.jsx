@@ -1,5 +1,5 @@
 import React from "react";
-import { Shield, BarChart3, Clock, ScanFace } from "lucide-react";
+import { Shield, BarChart3, Clock, ScanFace, QrCode } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
@@ -13,12 +13,22 @@ const Navbar = () => {
           Attendify
         </div>
 
-        <button
-          onClick={() => navigate("/login")}
-          className="bg-[#1e293b] text-white px-4 py-2 rounded-lg hover:bg-[#334155] transition"
-        >
-          Admin Login
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/qr-display-public")}
+            className="flex items-center gap-2 bg-transparent border border-white/30 text-white px-4 py-2 rounded-lg hover:bg-white/10 transition"
+          >
+            <QrCode size={18} />
+            QR Display
+          </button>
+
+          <button
+            onClick={() => navigate("/login")}
+            className="bg-[#1e293b] text-white px-4 py-2 rounded-lg hover:bg-[#334155] transition"
+          >
+            Admin Login
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -43,12 +53,22 @@ const Hero = () => {
           real-time tracking, and powerful analytics.
         </p>
 
-        <button
-          onClick={() => navigate("/login")}
-          className="bg-white text-[#0f172a] px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition"
-        >
-          Get Started
-        </button>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <button
+            onClick={() => navigate("/login")}
+            className="bg-white text-[#0f172a] px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition"
+          >
+            Get Started
+          </button>
+
+          <button
+            onClick={() => navigate("/qr-display-public")}
+            className="flex items-center gap-2 bg-transparent border-2 border-white text-white px-6 py-3 rounded-lg font-medium hover:bg-white/10 transition"
+          >
+            <QrCode size={20} />
+            View QR Display
+          </button>
+        </div>
       </div>
     </div>
   );
