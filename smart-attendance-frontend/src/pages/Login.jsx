@@ -20,14 +20,7 @@ export default function Login() {
       return;
     }
 
-    // ✅ UPDATED DOMAIN VALIDATION
-    if (
-      !email.endsWith("@webcraft.com") &&
-      !email.endsWith("@attendify.com")
-    ) {
-      setError("Use company email (@webcraft.com or @attendify.com)");
-      return;
-    }
+    // Email domain validation removed - accepts any email format
 
     setLoading(true);
 

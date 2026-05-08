@@ -62,7 +62,7 @@ exports.scanQR = async (req, res) => {
         settingKey: "geofence_config",
         officeLat: parseFloat(process.env.OFFICE_LAT) || 26.133402482129057,
         officeLng: parseFloat(process.env.OFFICE_LNG) || 91.62278628045627,
-        allowedRadius: parseInt(process.env.DEFAULT_RADIUS) || 100
+        allowedRadius: parseInt(process.env.ALLOWED_RADIUS) || 100
       });
     }
 
@@ -74,8 +74,17 @@ exports.scanQR = async (req, res) => {
       geofenceConfig.officeLng
     );
 
+    // ✅ LOG GEOFENCE DATA
+    console.log(`📍 Geofence Check for ${user.employeeId}:`);
+    console.log(`   Office Location: Lat=${geofenceConfig.officeLat}, Lng=${geofenceConfig.officeLng}`);
+    console.log(`   User Location: Lat=${latitude}, Lng=${longitude}`);
+    console.log(`   Distance: ${Math.round(distance)}m`);
+    console.log(`   Allowed Radius: ${geofenceConfig.allowedRadius}m`);
+    console.log(`   Status: ${distance <= geofenceConfig.allowedRadius ? '✅ APPROVED' : '❌ DENIED'}`);
+
     // ✅ GEOFENCE VALIDATION
     if (distance > geofenceConfig.allowedRadius) {
+      console.log(`❌ Geofence DENIED for ${user.employeeId}: ${Math.round(distance)}m > ${geofenceConfig.allowedRadius}m`);
       return res.status(403).json({
         success: false,
         reason: "OUTSIDE_ZONE",
@@ -84,6 +93,27 @@ exports.scanQR = async (req, res) => {
         allowedRadius: geofenceConfig.allowedRadius
       });
     }
+
+    // ✅ FETCH ATTENDANCE TIMES FROM DATABASE
+    let timesConfig = await AdminSettings.findOne({ settingKey: "attendance_times" });
+    
+    // If no config exists, create default
+    if (!timesConfig) {
+      timesConfig = await AdminSettings.create({
+        settingKey: "attendance_times",
+        checkinStart: 525,    // 8:45 AM
+        checkinEnd: 570,      // 9:30 AM
+        checkoutStart: 1005,  // 4:45 PM
+        checkoutEnd: 1050,    // 5:30 PM
+        lateThreshold: 556    // 9:16 AM
+      });
+    }
+
+    const CHECKIN_START = timesConfig.checkinStart;
+    const CHECKIN_END = timesConfig.checkinEnd;
+    const CHECKOUT_START = timesConfig.checkoutStart;
+    const CHECKOUT_END = timesConfig.checkoutEnd;
+    const LATE_THRESHOLD = timesConfig.lateThreshold;
 
     let now = moment().tz("Asia/Kolkata");
 
@@ -95,17 +125,24 @@ exports.scanQR = async (req, res) => {
     const todayStr = now.format("YYYY-MM-DD");
     const minutesNow = now.hours() * 60 + now.minutes();
 
+    // ✅ LOG ATTENDANCE TIME SETTINGS
+    const minutesToTime = (mins) => {
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
+    
+    console.log(`⏰ Attendance Times Config:`);
+    console.log(`   Check-in Window: ${minutesToTime(CHECKIN_START)} - ${minutesToTime(CHECKIN_END)}`);
+    console.log(`   Check-out Window: ${minutesToTime(CHECKOUT_START)} - ${minutesToTime(CHECKOUT_END)}`);
+    console.log(`   Late Threshold: ${minutesToTime(LATE_THRESHOLD)}`);
+    console.log(`   Current Time: ${now.format("HH:mm")} (${minutesNow} minutes)`);
+
     if (process.env.TEST_MODE !== "true" && now.isoWeekday() > 5) {
       return res.status(400).json({
         message: "Weekends not allowed",
       });
     }
-
-    const CHECKIN_START = 8 * 60 + 45;
-    const CHECKIN_END = 9 * 60 + 30;
-
-    const CHECKOUT_START = 16 * 60 + 45;
-    const CHECKOUT_END = 17 * 60 + 30;
 
     let attendance = await Attendance.findOne({
       employee: user.id,
@@ -166,17 +203,21 @@ exports.scanQR = async (req, res) => {
     if (mode === "checkin") {
 
       if (minutesNow < CHECKIN_START || minutesNow > CHECKIN_END) {
+        console.log(`❌ Check-in DENIED for ${user.employeeId}: Outside time window (${minutesNow} not in ${CHECKIN_START}-${CHECKIN_END})`);
         return res.status(400).json({ message: "Check-in QR not active" });
       }
 
       if (attendance && attendance.checkIn) {
+        console.log(`❌ Check-in DENIED for ${user.employeeId}: Already checked in`);
         return res.status(400).json({ message: "Already checked in" });
       }
 
       let status = "present";
-      if (minutesNow >= (9 * 60 + 16)) {
+      if (minutesNow >= LATE_THRESHOLD) {
         status = "late";
       }
+      
+      console.log(`✅ Check-in Status: ${status.toUpperCase()}`);
 
       if (!attendance) {
         attendance = await Attendance.create({
@@ -215,6 +256,13 @@ exports.scanQR = async (req, res) => {
         await attendance.save();
       }
 
+      console.log(`✅ CHECK-IN SUCCESS for ${user.employeeId}:`);
+      console.log(`   Time: ${now.format("HH:mm")}`);
+      console.log(`   Status: ${status}`);
+      console.log(`   Location: Lat=${latitude}, Lng=${longitude}`);
+      console.log(`   Distance: ${Math.round(distance)}m`);
+      console.log(`   Saved to DB: ${attendance._id}`);
+
       return res.json({
         success: true,
         type: "checkin",
@@ -229,16 +277,19 @@ exports.scanQR = async (req, res) => {
     if (mode === "checkout") {
 
       if (minutesNow < CHECKOUT_START || minutesNow > CHECKOUT_END) {
+        console.log(`❌ Check-out DENIED for ${user.employeeId}: Outside time window (${minutesNow} not in ${CHECKOUT_START}-${CHECKOUT_END})`);
         return res.status(400).json({ message: "Check-out QR not active" });
       }
 
       if (!attendance || !attendance.checkIn) {
+        console.log(`❌ Check-out DENIED for ${user.employeeId}: No check-in found`);
         return res.status(400).json({
           message: "Check-in required first",
         });
       }
 
       if (attendance.checkOut) {
+        console.log(`❌ Check-out DENIED for ${user.employeeId}: Already checked out`);
         return res.status(400).json({
           message: "Already checked out",
         });
@@ -251,6 +302,11 @@ exports.scanQR = async (req, res) => {
       }
 
       await attendance.save();
+
+      console.log(`✅ CHECK-OUT SUCCESS for ${user.employeeId}:`);
+      console.log(`   Time: ${now.format("HH:mm")}`);
+      console.log(`   Status: ${attendance.status}`);
+      console.log(`   Updated DB: ${attendance._id}`);
 
       return res.json({
         type: "checkout",

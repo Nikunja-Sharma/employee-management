@@ -1,5 +1,18 @@
 const AdminSettings = require("../models/AdminSettings");
 
+// Helper function to convert HH:MM to minutes
+const timeToMinutes = (timeStr) => {
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+// Helper function to convert minutes to HH:MM
+const minutesToTime = (minutes) => {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+};
+
 // Get geofence configuration
 const getGeofenceConfig = async (req, res) => {
   try {
@@ -11,9 +24,11 @@ const getGeofenceConfig = async (req, res) => {
         settingKey: "geofence_config",
         officeLat: parseFloat(process.env.OFFICE_LAT) || 26.133402482129057,
         officeLng: parseFloat(process.env.OFFICE_LNG) || 91.62278628045627,
-        allowedRadius: parseInt(process.env.DEFAULT_RADIUS) || 100
+        allowedRadius: parseInt(process.env.ALLOWED_RADIUS) || 100
       });
     }
+
+    console.log(`📍 Geofence Config Retrieved: Lat=${config.officeLat}, Lng=${config.officeLng}, Radius=${config.allowedRadius}m`);
 
     res.status(200).json({
       success: true,
@@ -91,6 +106,8 @@ const updateGeofenceConfig = async (req, res) => {
       });
     }
 
+    console.log(`✅ Geofence Config Updated: Lat=${config.officeLat}, Lng=${config.officeLng}, Radius=${config.allowedRadius}m by Admin ID=${adminId}`);
+
     res.status(200).json({
       success: true,
       message: "Geofence configuration updated successfully",
@@ -111,7 +128,139 @@ const updateGeofenceConfig = async (req, res) => {
   }
 };
 
+// Get attendance times configuration
+const getAttendanceTimes = async (req, res) => {
+  try {
+    let config = await AdminSettings.findOne({ settingKey: "attendance_times" });
+
+    // If no config exists, create default
+    if (!config) {
+      config = await AdminSettings.create({
+        settingKey: "attendance_times",
+        checkinStart: 525,    // 8:45 AM
+        checkinEnd: 570,      // 9:30 AM
+        checkoutStart: 1005,  // 4:45 PM
+        checkoutEnd: 1050,    // 5:30 PM
+        lateThreshold: 556    // 9:16 AM
+      });
+    }
+
+    console.log(`⏰ Attendance Times Retrieved: Check-in ${minutesToTime(config.checkinStart)}-${minutesToTime(config.checkinEnd)}, Check-out ${minutesToTime(config.checkoutStart)}-${minutesToTime(config.checkoutEnd)}`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        checkinStart: minutesToTime(config.checkinStart),
+        checkinEnd: minutesToTime(config.checkinEnd),
+        checkoutStart: minutesToTime(config.checkoutStart),
+        checkoutEnd: minutesToTime(config.checkoutEnd),
+        lateThreshold: minutesToTime(config.lateThreshold),
+        updatedAt: config.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error("Get attendance times error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+// Update attendance times configuration (Admin only)
+const updateAttendanceTimes = async (req, res) => {
+  try {
+    const { checkinStart, checkinEnd, checkoutStart, checkoutEnd, lateThreshold } = req.body;
+    const adminId = req.user.id;
+
+    // Validation
+    if (!checkinStart || !checkinEnd || !checkoutStart || !checkoutEnd || !lateThreshold) {
+      return res.status(400).json({
+        success: false,
+        message: "All time fields are required"
+      });
+    }
+
+    // Convert times to minutes
+    const checkinStartMin = timeToMinutes(checkinStart);
+    const checkinEndMin = timeToMinutes(checkinEnd);
+    const checkoutStartMin = timeToMinutes(checkoutStart);
+    const checkoutEndMin = timeToMinutes(checkoutEnd);
+    const lateThresholdMin = timeToMinutes(lateThreshold);
+
+    // Validate time ranges
+    if (checkinStartMin >= checkinEndMin) {
+      return res.status(400).json({
+        success: false,
+        message: "Check-in start time must be before end time"
+      });
+    }
+
+    if (checkoutStartMin >= checkoutEndMin) {
+      return res.status(400).json({
+        success: false,
+        message: "Check-out start time must be before end time"
+      });
+    }
+
+    if (lateThresholdMin < checkinStartMin || lateThresholdMin > checkinEndMin) {
+      return res.status(400).json({
+        success: false,
+        message: "Late threshold must be between check-in start and end times"
+      });
+    }
+
+    // Update or create config
+    let config = await AdminSettings.findOne({ settingKey: "attendance_times" });
+
+    if (config) {
+      config.checkinStart = checkinStartMin;
+      config.checkinEnd = checkinEndMin;
+      config.checkoutStart = checkoutStartMin;
+      config.checkoutEnd = checkoutEndMin;
+      config.lateThreshold = lateThresholdMin;
+      config.updatedBy = adminId;
+      await config.save();
+    } else {
+      config = await AdminSettings.create({
+        settingKey: "attendance_times",
+        checkinStart: checkinStartMin,
+        checkinEnd: checkinEndMin,
+        checkoutStart: checkoutStartMin,
+        checkoutEnd: checkoutEndMin,
+        lateThreshold: lateThresholdMin,
+        updatedBy: adminId
+      });
+    }
+
+    console.log(`✅ Attendance Times Updated: Check-in ${checkinStart}-${checkinEnd}, Check-out ${checkoutStart}-${checkoutEnd}, Late threshold ${lateThreshold} by Admin ID=${adminId}`);
+
+    res.status(200).json({
+      success: true,
+      message: "Attendance times updated successfully",
+      data: {
+        checkinStart: minutesToTime(config.checkinStart),
+        checkinEnd: minutesToTime(config.checkinEnd),
+        checkoutStart: minutesToTime(config.checkoutStart),
+        checkoutEnd: minutesToTime(config.checkoutEnd),
+        lateThreshold: minutesToTime(config.lateThreshold),
+        updatedAt: config.updatedAt
+      }
+    });
+
+  } catch (error) {
+    console.error("Update attendance times error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
 module.exports = {
   getGeofenceConfig,
-  updateGeofenceConfig
+  updateGeofenceConfig,
+  getAttendanceTimes,
+  updateAttendanceTimes
 };

@@ -19,17 +19,6 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ✅ UPDATED DOMAIN LOGIC (ADMIN + EMPLOYEE)
-    if (
-      !email.endsWith("@webcraft.com") &&
-      !email.endsWith("@attendify.com")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Use company email (@webcraft.com or @attendify.com)",
-      });
-    }
-
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -78,14 +67,6 @@ exports.login = async (req, res) => {
 exports.sendOtp = async (req, res) => {
   try {
     const { email } = req.body;
-
-    // ✅ UPDATED DOMAIN LOGIC HERE ALSO
-    if (
-      !email.endsWith("@webcraft.com") &&
-      !email.endsWith("@attendify.com")
-    ) {
-      return res.status(400).json({ message: "Use company email only" });
-    }
 
     const user = await User.findOne({ email });
 

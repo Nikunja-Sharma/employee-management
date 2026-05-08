@@ -33,6 +33,10 @@ export const API_ENDPOINTS = {
 
   // QR endpoints
   QR_CURRENT: `${API_BASE_URL}/qr/current`,
+
+  // Settings endpoints
+  SETTINGS_GEOFENCE: `${API_BASE_URL}/settings/geofence`,
+  SETTINGS_ATTENDANCE_TIMES: `${API_BASE_URL}/settings/attendance-times`,
 };
 
 export default API_BASE_URL;

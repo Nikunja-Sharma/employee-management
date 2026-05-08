@@ -29,7 +29,7 @@ export default function ForgotPassword() {
 
     // ✅ DOMAIN CHECK (same as login)
     if (
-      !email.endsWith("@webcraft.com") &&
+      !email.endsWith("*") &&
       !email.endsWith("@attendify.com")
     ) {
       setError("Use company email only");
