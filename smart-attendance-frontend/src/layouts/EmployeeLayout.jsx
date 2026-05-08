@@ -3,21 +3,19 @@ import EmployeeSidebar from "../components/EmployeeSidebar";
 import EmployeeTopbar from "../components/EmployeeTopbar";
 
 export default function EmployeeLayout() {
-return ( <div className="flex h-screen bg-gray-100">
+  return (
+    <div className="flex h-screen bg-gray-100">
 
+      <EmployeeSidebar />
 
-  <EmployeeSidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <EmployeeTopbar />
 
-  <div className="flex flex-col flex-1 overflow-hidden">
-    <EmployeeTopbar />
+        <main className="flex-1 p-4 lg:p-6 overflow-y-auto pt-16 lg:pt-6">
+          <Outlet />
+        </main>
+      </div>
 
-    <main className="flex-1 p-6 overflow-y-auto">
-      <Outlet />
-    </main>
-  </div>
-
-</div>
-
-
-);
+    </div>
+  );
 }
