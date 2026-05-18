@@ -52,7 +52,7 @@ exports.setQR = async (qrData) => {
       },
       {
         upsert: true,
-        new: true
+        returnDocument: 'after'
       }
     );
 
