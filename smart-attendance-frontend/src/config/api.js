@@ -38,6 +38,11 @@ export const API_ENDPOINTS = {
   SETTINGS_GEOFENCE: `${API_BASE_URL}/settings/geofence`,
   SETTINGS_ATTENDANCE_TIMES: `${API_BASE_URL}/settings/attendance-times`,
   SETTINGS_LEAVE_DEFAULTS: `${API_BASE_URL}/settings/leave-defaults`,
+
+  // Leave Balance endpoints
+  LEAVE_BALANCE_EMPLOYEE: `${API_BASE_URL}/leave-balance/employee`,
+  LEAVE_BALANCE_ALL: `${API_BASE_URL}/leave-balance/all`,
+  LEAVE_BALANCE_STATS: `${API_BASE_URL}/leave-balance/stats`,
 };
 
 export default API_BASE_URL;

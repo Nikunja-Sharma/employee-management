@@ -52,7 +52,6 @@ function App() {
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="employees" element={<Employees />} />
             <Route path="attendance" element={<Attendance />} />
-            <Route path="qr-display" element={<QRDisplay />} />
             <Route path="leaves" element={<AdminLeaves />} />
             <Route path="leave-balance" element={<LeaveBalance />} />
             <Route path="settings" element={<Settings />} />

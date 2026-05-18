@@ -51,3 +51,24 @@ export const getLeaveStats = async (params = {}) => {
   const res = await axios.get(`${API_ENDPOINTS.ADMIN_LEAVE_STATS}?${queryString}`);
   return res.data;
 };
+
+// ================= LEAVE BALANCE APIs =================
+
+/* Get employee leave balance */
+export const getEmployeeLeaveBalance = async (userId) => {
+  const res = await axios.get(`${API_ENDPOINTS.LEAVE_BALANCE_EMPLOYEE}/${userId}`);
+  return res.data;
+};
+
+/* Get all employees leave balance (Admin) */
+export const getAllEmployeesLeaveBalance = async (params = {}) => {
+  const queryString = new URLSearchParams(params).toString();
+  const res = await axios.get(`${API_ENDPOINTS.LEAVE_BALANCE_ALL}?${queryString}`);
+  return res.data;
+};
+
+/* Get leave balance statistics (Admin) */
+export const getLeaveBalanceStats = async () => {
+  const res = await axios.get(API_ENDPOINTS.LEAVE_BALANCE_STATS);
+  return res.data;
+};

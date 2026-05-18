@@ -1,9 +1,13 @@
-import { useState, useEffect } from "react";
-import { applyLeave, getMyLeaves, cancelLeave } from "../api/leaveApi";
+import { useState, useEffect, useContext } from "react";
+import { applyLeave, getMyLeaves, cancelLeave, getEmployeeLeaveBalance } from "../api/leaveApi";
+import { AuthContext } from "../context/AuthContext";
 
 export default function EmployeeLeaves() {
+  const { user } = useContext(AuthContext);
   const [leaves, setLeaves] = useState([]);
+  const [leaveBalance, setLeaveBalance] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [balanceLoading, setBalanceLoading] = useState(false);
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [filter, setFilter] = useState("all");
   const [pagination, setPagination] = useState({
@@ -62,9 +66,27 @@ export default function EmployeeLeaves() {
     }
   };
 
+  // Fetch leave balance
+  const fetchLeaveBalance = async () => {
+    if (!user?._id) return;
+    
+    try {
+      setBalanceLoading(true);
+      const response = await getEmployeeLeaveBalance(user._id);
+      if (response.success) {
+        setLeaveBalance(response.data);
+      }
+    } catch (error) {
+      console.error("Error fetching leave balance:", error);
+    } finally {
+      setBalanceLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchLeaves();
-  }, [filter]);
+    fetchLeaveBalance();
+  }, [filter, user]);
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -94,6 +116,7 @@ export default function EmployeeLeaves() {
           reason: ""
         });
         fetchLeaves(); // Refresh the list
+        fetchLeaveBalance(); // Refresh leave balance
       }
     } catch (error) {
       console.error("Error applying leave:", error);
@@ -160,6 +183,48 @@ export default function EmployeeLeaves() {
 
   return (
     <div className="p-6">
+      {/* Leave Balance Dashboard */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">My Leave Balance</h2>
+        
+        {balanceLoading ? (
+          <div className="bg-white rounded-lg shadow p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Loading leave balance...</p>
+          </div>
+        ) : leaveBalance ? (
+          <>
+            {/* Detailed Leave Balance - Only Remaining */}
+            <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Available Leaves - Year {leaveBalance.year}</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 p-6">
+                {Object.entries(leaveBalance.leaveBalance).map(([type, balance]) => {
+                  const getColorClass = () => {
+                    if (balance.remaining === 0) return 'text-red-600 bg-red-50 border-red-200';
+                    if (balance.remaining <= 3) return 'text-orange-600 bg-orange-50 border-orange-200';
+                    return 'text-green-600 bg-green-50 border-green-200';
+                  };
+
+                  return (
+                    <div key={type} className={`border-2 rounded-lg p-4 text-center ${getColorClass()}`}>
+                      <h4 className="font-semibold capitalize text-sm mb-2">{type}</h4>
+                      <div className="text-3xl font-bold mb-1">{balance.remaining}</div>
+                      <div className="text-xs font-medium">days left</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            No leave balance data available
+          </div>
+        )}
+      </div>
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -217,6 +282,14 @@ export default function EmployeeLeaves() {
                     </option>
                   ))}
                 </select>
+                {leaveBalance && leaveBalance.leaveBalance[formData.leaveType] && (
+                  <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
+                    <span className="font-medium text-blue-900">Available: </span>
+                    <span className="text-blue-700">
+                      {leaveBalance.leaveBalance[formData.leaveType].remaining} days remaining
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Start Date */}

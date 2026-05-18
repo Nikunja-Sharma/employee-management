@@ -70,10 +70,6 @@ export default function Sidebar() {
               Attendance
             </Link>
 
-            <Link to="/admin/qr-display" className={linkClass("qr-display")} onClick={handleLinkClick}>
-              QR Display
-            </Link>
-
             <Link to="/admin/leaves" className={linkClass("leaves")} onClick={handleLinkClick}>
               Leave Management
             </Link>
