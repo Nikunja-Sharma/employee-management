@@ -69,12 +69,21 @@ const AdminDashboard = () => {
           late
         });
 
-        // ✅ TODAY ACTIVITY
-        const activityData = todayRecords.map((r) => ({
-          name: r.employee?.name || "Employee",
-          time: r.checkIn || "--",
-          status: r.status
-        }));
+        // ✅ TODAY ACTIVITY - Show actual check-in times
+        const activityData = todayRecords
+          .filter(r => r.checkIn) // Only show records with check-in time
+          .map((r) => ({
+            name: r.employee?.name || "Employee",
+            employeeId: r.employeeId || "",
+            time: r.checkIn, // Actual check-in time from database
+            status: r.status
+          }))
+          .sort((a, b) => {
+            // Sort by check-in time (earliest first)
+            const timeA = a.time.split(':').map(Number);
+            const timeB = b.time.split(':').map(Number);
+            return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+          });
 
         setActivity(activityData);
 
@@ -211,7 +220,10 @@ const AdminDashboard = () => {
 
                   <div>
                     <p className="text-sm font-medium">{item.name}</p>
-                    <p className="text-xs text-gray-400">{item.time}</p>
+                    <p className="text-xs text-gray-400">
+                      {item.employeeId && `${item.employeeId} • `}
+                      Checked in at {item.time}
+                    </p>
                   </div>
 
                   <span className={`text-xs px-3 py-1 rounded-full ${
@@ -228,7 +240,7 @@ const AdminDashboard = () => {
 
               )) : (
                 <p className="text-sm text-gray-500">
-                  No activity today
+                  No check-ins today
                 </p>
               )}
 
