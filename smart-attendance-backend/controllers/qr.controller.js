@@ -15,19 +15,40 @@ exports.getCurrentQR = async (req, res) => {
       return res.json({ active: false });
     }
 
-    // ✅ Get latest QR
-    const qr = await QR.findOne().sort({ updatedAt: -1 });
+    // ✅ Get time settings from AdminSettings
+    const AdminSettings = require("../models/AdminSettings");
+    const settings = await AdminSettings.findOne({ settingKey: "attendance_times" });
 
-    if (!qr || !qr.active) {
+    if (!settings) {
+      return res.json({ active: false });
+    }
+
+    let currentMinutes = now.hours() * 60 + now.minutes();
+
+    // Override time for TEST MODE if TEST_TIME is provided
+    if (process.env.TEST_MODE === "true" && process.env.TEST_TIME) {
+      const [hour, minute] = process.env.TEST_TIME.split(":").map(Number);
+      currentMinutes = hour * 60 + minute;
+    }
+
+    let mode = null;
+
+    if (currentMinutes >= settings.checkinStart && currentMinutes <= settings.checkinEnd) {
+      mode = "checkin";
+    } else if (currentMinutes >= settings.checkoutStart && currentMinutes <= settings.checkoutEnd) {
+      mode = "checkout";
+    }
+
+    if (!mode) {
       return res.json({ active: false });
     }
 
     return res.json({
       active: true,
       qr: {
-        type: qr.type,
-        mode: qr.mode,
-        date: qr.date
+        type: "attendance",
+        mode: mode,
+        date: now.format("YYYY-MM-DD")
       }
     });
 
