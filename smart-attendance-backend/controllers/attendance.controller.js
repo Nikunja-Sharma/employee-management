@@ -117,7 +117,7 @@ exports.scanQR = async (req, res) => {
 
     let now = moment().tz("Asia/Kolkata");
 
-    if (process.env.TEST_TIME) {
+    if (process.env.TEST_MODE === "true" && process.env.TEST_TIME) {
       const [hour, minute] = process.env.TEST_TIME.split(":").map(Number);
       now = now.clone().set({ hour, minute });
     }
